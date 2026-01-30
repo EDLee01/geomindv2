@@ -54,28 +54,28 @@ export function ChatWindow({
       <div className="flex-1 flex flex-col bg-geo-bg-light">
         {/* Project Header (if in a project) */}
         {activeProject && (
-          <div className="px-6 py-4 border-b border-gray-200 bg-white">
-            <h2 className="text-lg font-semibold text-geo-primary">{activeProject.name}</h2>
+          <div className="px-4 md:px-6 py-3 md:py-4 border-b border-gray-200 bg-white">
+            <h2 className="text-base md:text-lg font-semibold text-geo-primary">{activeProject.name}</h2>
             {activeProject.topic && (
-              <p className="text-sm text-geo-text-light mt-1">{activeProject.topic}</p>
+              <p className="text-sm text-geo-text-light mt-1 line-clamp-2">{activeProject.topic}</p>
             )}
           </div>
         )}
 
         {/* Welcome Content */}
-        <div className="flex-1 flex items-center justify-center">
-          <div className="text-center max-w-2xl px-6">
-            <div className="text-6xl mb-6">🌍</div>
-            <h2 className="text-3xl font-bold text-geo-primary mb-3">
+        <div className="flex-1 flex items-center justify-center overflow-y-auto">
+          <div className="text-center max-w-2xl px-4 md:px-6 py-6">
+            <div className="text-4xl md:text-6xl mb-4 md:mb-6">🌍</div>
+            <h2 className="text-2xl md:text-3xl font-bold text-geo-primary mb-2 md:mb-3">
               Welcome to GeoMind 3.0
             </h2>
-            <p className="text-geo-text-light text-lg mb-8">
+            <p className="text-geo-text-light text-base md:text-lg mb-6 md:mb-8">
               Your AI research assistant for Earth Sciences.
               Search verified literature, analyze data, and write papers.
             </p>
 
             {/* Feature Cards */}
-            <div className="grid grid-cols-2 gap-4 mb-8">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-4 mb-6 md:mb-8">
               <div className="p-4 bg-white rounded-xl border border-gray-200 text-left">
                 <BookOpen className="text-geo-accent mb-2" size={24} />
                 <h3 className="font-semibold text-geo-text">Literature Search</h3>
@@ -119,7 +119,7 @@ export function ChatWindow({
                   <button
                     key={suggestion}
                     onClick={() => handleSendMessage(suggestion)}
-                    className="px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm text-geo-text hover:bg-geo-accent-50 hover:border-geo-accent transition-colors"
+                    className="px-2 md:px-3 py-1.5 md:py-2 bg-white border border-gray-200 rounded-lg text-xs md:text-sm text-geo-text hover:bg-geo-accent-50 hover:border-geo-accent transition-colors"
                   >
                     {suggestion}
                   </button>
@@ -130,7 +130,7 @@ export function ChatWindow({
         </div>
 
         {/* Input Area */}
-        <div className="p-4">
+        <div className="p-2 md:p-4">
           <InputArea
             onSendMessage={handleSendMessage}
             onFileUpload={handleFileUpload}
@@ -147,14 +147,14 @@ export function ChatWindow({
     <div className="flex-1 flex flex-col bg-geo-bg-light">
       {/* Project Header (if in a project) */}
       {activeProject && (
-        <div className="px-6 py-3 border-b border-gray-200 bg-white">
-          <h2 className="text-lg font-semibold text-geo-primary">{activeProject.name}</h2>
+        <div className="px-4 md:px-6 py-2 md:py-3 border-b border-gray-200 bg-white">
+          <h2 className="text-base md:text-lg font-semibold text-geo-primary truncate">{activeProject.name}</h2>
         </div>
       )}
 
       {/* Messages Area */}
       <div className="flex-1 overflow-y-auto">
-        <div className="max-w-4xl mx-auto py-4 px-4 space-y-4">
+        <div className="max-w-4xl mx-auto py-2 md:py-4 px-2 md:px-4 space-y-3 md:space-y-4">
           {messages.map((message) => (
             <MessageBubble
               key={message.id}
@@ -199,7 +199,7 @@ export function ChatWindow({
       )}
 
       {/* Input Area */}
-      <div className="p-4 border-t border-gray-200 bg-white">
+      <div className="p-2 md:p-4 border-t border-gray-200 bg-white">
         <div className="max-w-4xl mx-auto">
           <InputArea
             onSendMessage={handleSendMessage}

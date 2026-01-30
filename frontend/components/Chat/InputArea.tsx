@@ -85,28 +85,30 @@ export function InputArea({
         {onToggleSearchLiterature && (
           <button
             onClick={onToggleSearchLiterature}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm transition-colors ${
+            className={`flex items-center gap-1 md:gap-1.5 px-2 md:px-3 py-1 md:py-1.5 rounded-full text-xs md:text-sm transition-colors ${
               searchLiterature
                 ? 'bg-geo-accent text-white'
                 : 'bg-gray-100 text-geo-text-light hover:bg-gray-200'
             }`}
           >
             <BookOpen size={14} />
-            <span>Search Literature</span>
+            <span className="hidden sm:inline">Search Literature</span>
+            <span className="sm:hidden">Literature</span>
           </button>
         )}
       </div>
 
       {/* Input Row */}
-      <div className="flex items-end gap-3">
+      <div className="flex items-end gap-2 md:gap-3">
         {/* File Upload Button */}
         <button
           onClick={() => fileInputRef.current?.click()}
           disabled={isUploading || isLoading}
-          className="p-2.5 text-geo-text-light hover:text-geo-text hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50"
+          className="p-2 md:p-2.5 text-geo-text-light hover:text-geo-text hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50"
           title="Upload file (Excel, CSV)"
         >
-          <Paperclip size={20} />
+          <Paperclip size={18} className="md:hidden" />
+          <Paperclip size={20} className="hidden md:block" />
         </button>
         <input
           ref={fileInputRef}
@@ -123,8 +125,8 @@ export function InputArea({
             value={message}
             onChange={handleTextareaChange}
             onKeyDown={handleKeyDown}
-            placeholder="Ask about Earth Sciences, analyze data, or search literature..."
-            className="w-full px-4 py-3 bg-geo-bg border border-gray-200 rounded-xl resize-none focus:outline-none focus:ring-2 focus:ring-geo-accent focus:border-transparent min-h-[48px] max-h-[200px] text-geo-text placeholder:text-geo-text-muted"
+            placeholder="Ask about Earth Sciences..."
+            className="w-full px-3 md:px-4 py-2.5 md:py-3 bg-geo-bg border border-gray-200 rounded-xl resize-none focus:outline-none focus:ring-2 focus:ring-geo-accent focus:border-transparent min-h-[44px] md:min-h-[48px] max-h-[200px] text-sm md:text-base text-geo-text placeholder:text-geo-text-muted"
             rows={1}
             disabled={isLoading}
           />
@@ -134,9 +136,10 @@ export function InputArea({
         <button
           onClick={handleSubmit}
           disabled={!message.trim() || isLoading}
-          className="p-3 bg-geo-accent text-white rounded-xl hover:bg-geo-accent-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          className="p-2.5 md:p-3 bg-geo-accent text-white rounded-xl hover:bg-geo-accent-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          <Send size={20} />
+          <Send size={18} className="md:hidden" />
+          <Send size={20} className="hidden md:block" />
         </button>
       </div>
 

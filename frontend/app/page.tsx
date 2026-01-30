@@ -6,7 +6,7 @@ import Link from 'next/link'
 import { Sidebar } from '@/components/Sidebar/Sidebar'
 import { ChatWindow } from '@/components/Chat/ChatWindow'
 import { ArtifactPanel } from '@/components/Artifact/ArtifactPanel'
-import { BookOpen, FolderPlus, Settings, User, Plus, LogOut, LogIn } from 'lucide-react'
+import { BookOpen, FolderPlus, Settings, User, Plus, LogOut, LogIn, Menu } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import {
   Project,
@@ -33,10 +33,22 @@ export default function Home() {
   const [activeChat, setActiveChat] = useState<Chat | null>(null)
   const [messages, setMessages] = useState<Message[]>([])
   const [activeArtifact, setActiveArtifact] = useState<Artifact | null>(null)
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true)
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false) // Default closed on mobile
   const [isLoading, setIsLoading] = useState(false)
   const [showNewProjectModal, setShowNewProjectModal] = useState(false)
   const [showUserMenu, setShowUserMenu] = useState(false)
+
+  // Set sidebar open by default on desktop
+  useEffect(() => {
+    const checkDesktop = () => {
+      if (window.innerWidth >= 768) {
+        setIsSidebarOpen(true)
+      }
+    }
+    checkDesktop()
+    window.addEventListener('resize', checkDesktop)
+    return () => window.removeEventListener('resize', checkDesktop)
+  }, [])
 
   // Load projects and quick chats on mount
   useEffect(() => {
@@ -148,27 +160,34 @@ export default function Home() {
   return (
     <div className="flex h-screen bg-geo-bg">
       {/* Header */}
-      <header className="fixed top-0 left-0 right-0 h-14 bg-geo-primary flex items-center justify-between px-4 z-50">
-        <div className="flex items-center gap-3">
-          <span className="text-2xl">🌍</span>
-          <span className="text-xl font-semibold text-white">GeoMind</span>
-          <span className="text-xs text-geo-primary-300 bg-geo-primary-700 px-2 py-0.5 rounded">
+      <header className="fixed top-0 left-0 right-0 h-14 bg-geo-primary flex items-center justify-between px-2 md:px-4 z-50">
+        <div className="flex items-center gap-2 md:gap-3">
+          {/* Mobile Menu Button */}
+          <button
+            onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+            className="p-2 rounded-lg hover:bg-geo-primary-700 text-white md:hidden"
+          >
+            <Menu size={20} />
+          </button>
+          <span className="text-xl md:text-2xl">🌍</span>
+          <span className="text-lg md:text-xl font-semibold text-white">GeoMind</span>
+          <span className="text-xs text-geo-primary-300 bg-geo-primary-700 px-2 py-0.5 rounded hidden sm:inline">
             3.0
           </span>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1 md:gap-2">
           <button
             onClick={() => setShowNewProjectModal(true)}
-            className="flex items-center gap-2 px-3 py-2 rounded-lg bg-geo-accent hover:bg-geo-accent-600 text-white transition-colors"
+            className="flex items-center gap-1 md:gap-2 px-2 md:px-3 py-2 rounded-lg bg-geo-accent hover:bg-geo-accent-600 text-white transition-colors"
           >
             <FolderPlus size={18} />
-            <span className="text-sm">New Project</span>
+            <span className="text-sm hidden sm:inline">New Project</span>
           </button>
-          <button className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-geo-primary-700 text-geo-primary-200 transition-colors">
+          <button className="hidden sm:flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-geo-primary-700 text-geo-primary-200 transition-colors">
             <BookOpen size={18} />
             <span className="text-sm hidden md:inline">Literature</span>
           </button>
-          <button className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-geo-primary-700 text-geo-primary-200 transition-colors">
+          <button className="hidden sm:flex items-center gap-2 px-2 md:px-3 py-2 rounded-lg hover:bg-geo-primary-700 text-geo-primary-200 transition-colors">
             <Settings size={18} />
           </button>
 
@@ -214,10 +233,10 @@ export default function Home() {
           ) : (
             <Link
               href="/login"
-              className="flex items-center gap-2 px-3 py-2 rounded-lg bg-geo-accent hover:bg-geo-accent-600 text-white transition-colors"
+              className="flex items-center gap-1 md:gap-2 px-2 md:px-3 py-2 rounded-lg bg-geo-accent hover:bg-geo-accent-600 text-white transition-colors"
             >
               <LogIn size={18} />
-              <span className="text-sm">Sign In</span>
+              <span className="text-sm hidden sm:inline">Sign In</span>
             </Link>
           )}
         </div>
@@ -242,7 +261,7 @@ export default function Home() {
         {/* Chat Area */}
         <main
           className={`flex-1 flex transition-all duration-300 ${
-            isSidebarOpen ? 'ml-64' : 'ml-0'
+            isSidebarOpen ? 'md:ml-64' : 'ml-0'
           }`}
         >
           <ChatWindow
@@ -293,8 +312,8 @@ function NewProjectModal({
   }
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-xl p-6 w-full max-w-md shadow-2xl">
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-xl p-4 md:p-6 w-full max-w-md shadow-2xl">
         <h2 className="text-xl font-semibold text-geo-primary mb-4">Create New Project</h2>
         <form onSubmit={handleSubmit}>
           <div className="space-y-4">

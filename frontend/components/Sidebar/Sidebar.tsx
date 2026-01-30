@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Project, Chat } from '@/lib/api'
 import {
   MessageSquarePlus,
@@ -12,6 +12,7 @@ import {
   ChevronDown,
   ChevronUp,
   Plus,
+  X,
 } from 'lucide-react'
 
 interface SidebarProps {
@@ -27,6 +28,20 @@ interface SidebarProps {
   onToggle: () => void
 }
 
+// Hook to detect mobile screen
+function useIsMobile() {
+  const [isMobile, setIsMobile] = useState(false)
+
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < 768)
+    checkMobile()
+    window.addEventListener('resize', checkMobile)
+    return () => window.removeEventListener('resize', checkMobile)
+  }, [])
+
+  return isMobile
+}
+
 export function Sidebar({
   projects,
   quickChats,
@@ -40,6 +55,15 @@ export function Sidebar({
   onToggle,
 }: SidebarProps) {
   const [expandedProjects, setExpandedProjects] = useState<Set<string>>(new Set())
+  const isMobile = useIsMobile()
+
+  // Close sidebar when selecting a chat on mobile
+  const handleSelectChat = (chat: Chat) => {
+    onSelectChat(chat)
+    if (isMobile) {
+      onToggle()
+    }
+  }
 
   const formatDate = (dateStr: string) => {
     const d = new Date(dateStr)
@@ -71,12 +95,20 @@ export function Sidebar({
 
   return (
     <>
-      {/* Toggle Button */}
+      {/* Mobile Overlay */}
+      {isMobile && isOpen && (
+        <div
+          className="fixed inset-0 bg-black/50 z-30 md:hidden"
+          onClick={onToggle}
+        />
+      )}
+
+      {/* Toggle Button - Hidden on mobile when sidebar is open */}
       <button
         onClick={onToggle}
         className={`fixed top-1/2 -translate-y-1/2 z-40 p-1.5 bg-white border border-gray-200 rounded-r-lg shadow-sm hover:bg-gray-50 transition-all ${
-          isOpen ? 'left-64' : 'left-0'
-        }`}
+          isOpen ? 'left-64 md:left-64' : 'left-0'
+        } ${isMobile && isOpen ? 'hidden' : ''}`}
       >
         {isOpen ? (
           <ChevronLeft size={16} className="text-geo-text-light" />
@@ -87,19 +119,30 @@ export function Sidebar({
 
       {/* Sidebar */}
       <aside
-        className={`fixed top-14 left-0 h-[calc(100vh-3.5rem)] w-64 bg-white border-r border-gray-200 flex flex-col transition-transform duration-300 z-30 ${
+        className={`fixed top-14 left-0 h-[calc(100vh-3.5rem)] w-64 bg-white border-r border-gray-200 flex flex-col transition-transform duration-300 z-40 ${
           isOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
-        {/* New Chat Button */}
-        <div className="p-3">
+        {/* Header with Close Button on Mobile */}
+        <div className="p-3 flex items-center justify-between">
           <button
-            onClick={onNewQuickChat}
-            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-geo-accent text-white rounded-lg hover:bg-geo-accent-600 transition-colors"
+            onClick={() => {
+              onNewQuickChat()
+              if (isMobile) onToggle()
+            }}
+            className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-geo-accent text-white rounded-lg hover:bg-geo-accent-600 transition-colors"
           >
             <MessageSquarePlus size={18} />
             <span>Quick Chat</span>
           </button>
+          {isMobile && (
+            <button
+              onClick={onToggle}
+              className="ml-2 p-2 text-geo-text-muted hover:bg-gray-100 rounded-lg"
+            >
+              <X size={20} />
+            </button>
+          )}
         </div>
 
         {/* Content */}
@@ -202,7 +245,7 @@ export function Sidebar({
                     }`}
                   >
                     <button
-                      onClick={() => onSelectChat(chat)}
+                      onClick={() => handleSelectChat(chat)}
                       className="w-full text-left px-3 py-2.5"
                     >
                       <div className="flex items-center gap-2">
