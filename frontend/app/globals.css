@@ -1,0 +1,71 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --foreground-rgb: 30, 41, 59;
+  --background-rgb: 248, 250, 252;
+}
+
+body {
+  color: rgb(var(--foreground-rgb));
+  background: rgb(var(--background-rgb));
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f5f9;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* Message content styling */
+.message-content {
+  @apply prose prose-slate max-w-none;
+}
+
+.message-content pre {
+  @apply bg-slate-800 text-slate-100 rounded-lg p-4 overflow-x-auto;
+}
+
+.message-content code {
+  @apply bg-slate-100 text-slate-800 px-1 py-0.5 rounded text-sm;
+}
+
+.message-content pre code {
+  @apply bg-transparent text-inherit p-0;
+}
+
+/* Animation for loading dots */
+@keyframes pulse-dot {
+  0%, 100% {
+    opacity: 0.4;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+.loading-dot {
+  animation: pulse-dot 1.4s infinite;
+}
+
+.loading-dot:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.loading-dot:nth-child(3) {
+  animation-delay: 0.4s;
+}
