@@ -2,7 +2,7 @@
 GeoMind 3.0 Database Models
 Based on design document specifications
 """
-from sqlalchemy import Column, String, Text, DateTime, ForeignKey, Enum, JSON
+from sqlalchemy import Column, String, Text, DateTime, ForeignKey, Enum, JSON, Boolean
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
@@ -26,6 +26,38 @@ class MessageRole(str, enum.Enum):
     system = "system"
 
 
+class User(Base):
+    """
+    User Model - Represents a registered user
+    """
+    __tablename__ = "users"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    email = Column(String(255), unique=True, nullable=False, index=True)
+    username = Column(String(100), unique=True, nullable=False, index=True)
+    hashed_password = Column(String(255), nullable=False)
+
+    # Profile
+    full_name = Column(String(255), nullable=True)
+    avatar_url = Column(String(500), nullable=True)
+
+    # Status
+    is_active = Column(Boolean, default=True)
+    is_verified = Column(Boolean, default=False)
+
+    # Timestamps
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+    last_login = Column(DateTime(timezone=True), nullable=True)
+
+    # Relationships
+    projects = relationship("Project", back_populates="user", cascade="all, delete-orphan")
+    chats = relationship("Chat", back_populates="user", cascade="all, delete-orphan")
+
+    def __repr__(self):
+        return f"<User {self.username}>"
+
+
 class Project(Base):
     """
     Project Model - Represents a research project
@@ -34,6 +66,7 @@ class Project(Base):
     __tablename__ = "projects"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=True, index=True)
     name = Column(String(255), nullable=False)
     topic = Column(Text, nullable=True)
 
@@ -72,6 +105,7 @@ class Project(Base):
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
     # Relationships
+    user = relationship("User", back_populates="projects")
     chats = relationship("Chat", back_populates="project", cascade="all, delete-orphan")
     files = relationship("File", back_populates="project", cascade="all, delete-orphan")
 
@@ -87,6 +121,7 @@ class Chat(Base):
     __tablename__ = "chats"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=True, index=True)
     project_id = Column(UUID(as_uuid=True), ForeignKey("projects.id", ondelete="CASCADE"), nullable=True)
     title = Column(String(255), default="New Chat")
 
@@ -97,6 +132,7 @@ class Chat(Base):
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
     # Relationships
+    user = relationship("User", back_populates="chats")
     project = relationship("Project", back_populates="chats")
     messages = relationship("Message", back_populates="chat", cascade="all, delete-orphan", order_by="Message.created_at")
 

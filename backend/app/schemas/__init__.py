@@ -33,6 +33,14 @@ from .file import (
     FileUploadResponse,
     FileInfoResponse
 )
+from .auth import (
+    UserCreate,
+    UserLogin,
+    UserResponse,
+    TokenResponse,
+    UserUpdate,
+    PasswordChange
+)
 
 __all__ = [
     # Project
@@ -61,5 +69,12 @@ __all__ = [
     "ExportFormat",
     # File
     "FileUploadResponse",
-    "FileInfoResponse"
+    "FileInfoResponse",
+    # Auth
+    "UserCreate",
+    "UserLogin",
+    "UserResponse",
+    "TokenResponse",
+    "UserUpdate",
+    "PasswordChange"
 ]

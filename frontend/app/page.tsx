@@ -1,10 +1,13 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { Sidebar } from '@/components/Sidebar/Sidebar'
 import { ChatWindow } from '@/components/Chat/ChatWindow'
 import { ArtifactPanel } from '@/components/Artifact/ArtifactPanel'
-import { BookOpen, FolderPlus, Settings, User, Plus } from 'lucide-react'
+import { BookOpen, FolderPlus, Settings, User, Plus, LogOut, LogIn } from 'lucide-react'
+import { useAuth } from '@/contexts/AuthContext'
 import {
   Project,
   Chat,
@@ -20,6 +23,9 @@ import {
 } from '@/lib/api'
 
 export default function Home() {
+  const router = useRouter()
+  const { user, isLoading: isAuthLoading, isAuthenticated, logout } = useAuth()
+
   // State
   const [projects, setProjects] = useState<Project[]>([])
   const [quickChats, setQuickChats] = useState<Chat[]>([])
@@ -30,6 +36,7 @@ export default function Home() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true)
   const [isLoading, setIsLoading] = useState(false)
   const [showNewProjectModal, setShowNewProjectModal] = useState(false)
+  const [showUserMenu, setShowUserMenu] = useState(false)
 
   // Load projects and quick chats on mount
   useEffect(() => {
@@ -164,9 +171,55 @@ export default function Home() {
           <button className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-geo-primary-700 text-geo-primary-200 transition-colors">
             <Settings size={18} />
           </button>
-          <button className="w-8 h-8 rounded-full bg-geo-accent text-white flex items-center justify-center">
-            <User size={16} />
-          </button>
+
+          {/* User Menu */}
+          {isAuthLoading ? (
+            <div className="w-8 h-8 rounded-full bg-geo-primary-600 animate-pulse" />
+          ) : isAuthenticated && user ? (
+            <div className="relative">
+              <button
+                onClick={() => setShowUserMenu(!showUserMenu)}
+                className="w-8 h-8 rounded-full bg-geo-accent text-white flex items-center justify-center hover:bg-geo-accent-600 transition-colors"
+                title={user.username}
+              >
+                {user.avatar_url ? (
+                  <img src={user.avatar_url} alt={user.username} className="w-8 h-8 rounded-full" />
+                ) : (
+                  <span className="text-sm font-medium">
+                    {user.username.charAt(0).toUpperCase()}
+                  </span>
+                )}
+              </button>
+
+              {showUserMenu && (
+                <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg py-1 z-50">
+                  <div className="px-4 py-2 border-b border-gray-100">
+                    <p className="text-sm font-medium text-geo-primary-800">{user.full_name || user.username}</p>
+                    <p className="text-xs text-geo-primary-500">{user.email}</p>
+                  </div>
+                  <button
+                    onClick={() => {
+                      logout()
+                      setShowUserMenu(false)
+                      router.push('/login')
+                    }}
+                    className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 flex items-center gap-2"
+                  >
+                    <LogOut size={16} />
+                    Sign Out
+                  </button>
+                </div>
+              )}
+            </div>
+          ) : (
+            <Link
+              href="/login"
+              className="flex items-center gap-2 px-3 py-2 rounded-lg bg-geo-accent hover:bg-geo-accent-600 text-white transition-colors"
+            >
+              <LogIn size={18} />
+              <span className="text-sm">Sign In</span>
+            </Link>
+          )}
         </div>
       </header>
 

@@ -468,6 +468,183 @@ export async function chatCompletion(
 }
 
 // ============================================
+// Auth Types
+// ============================================
+
+export interface User {
+  id: string
+  email: string
+  username: string
+  full_name: string | null
+  avatar_url: string | null
+  is_active: boolean
+  is_verified: boolean
+  created_at: string
+  last_login: string | null
+}
+
+export interface TokenResponse {
+  access_token: string
+  token_type: string
+  user: User
+}
+
+// ============================================
+// Auth API
+// ============================================
+
+/**
+ * Get stored auth token
+ */
+export function getAuthToken(): string | null {
+  if (typeof window === 'undefined') return null
+  return localStorage.getItem('geomind_token')
+}
+
+/**
+ * Set auth token
+ */
+export function setAuthToken(token: string): void {
+  if (typeof window === 'undefined') return
+  localStorage.setItem('geomind_token', token)
+}
+
+/**
+ * Clear auth token
+ */
+export function clearAuthToken(): void {
+  if (typeof window === 'undefined') return
+  localStorage.removeItem('geomind_token')
+}
+
+/**
+ * Get auth headers
+ */
+function getAuthHeaders(): Record<string, string> {
+  const token = getAuthToken()
+  if (token) {
+    return { 'Authorization': `Bearer ${token}` }
+  }
+  return {}
+}
+
+/**
+ * Register a new user
+ */
+export async function register(
+  email: string,
+  username: string,
+  password: string,
+  fullName?: string
+): Promise<TokenResponse> {
+  const response = await fetch(`${API_BASE_URL}/api/auth/register`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      email,
+      username,
+      password,
+      full_name: fullName,
+    }),
+  })
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ detail: 'Registration failed' }))
+    throw new Error(error.detail || 'Registration failed')
+  }
+
+  const data = await response.json()
+  setAuthToken(data.access_token)
+  return data
+}
+
+/**
+ * Login with username/email and password
+ */
+export async function login(username: string, password: string): Promise<TokenResponse> {
+  const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username, password }),
+  })
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ detail: 'Login failed' }))
+    throw new Error(error.detail || 'Login failed')
+  }
+
+  const data = await response.json()
+  setAuthToken(data.access_token)
+  return data
+}
+
+/**
+ * Logout the current user
+ */
+export function logout(): void {
+  clearAuthToken()
+}
+
+/**
+ * Get current user info
+ */
+export async function getCurrentUser(): Promise<User> {
+  const response = await fetch(`${API_BASE_URL}/api/auth/me`, {
+    headers: {
+      ...getAuthHeaders(),
+    },
+  })
+
+  if (!response.ok) {
+    throw new Error('Not authenticated')
+  }
+
+  return response.json()
+}
+
+/**
+ * Update current user profile
+ */
+export async function updateProfile(data: { full_name?: string; avatar_url?: string }): Promise<User> {
+  const response = await fetch(`${API_BASE_URL}/api/auth/me`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+      ...getAuthHeaders(),
+    },
+    body: JSON.stringify(data),
+  })
+
+  if (!response.ok) {
+    throw new Error('Failed to update profile')
+  }
+
+  return response.json()
+}
+
+/**
+ * Change password
+ */
+export async function changePassword(currentPassword: string, newPassword: string): Promise<void> {
+  const response = await fetch(`${API_BASE_URL}/api/auth/change-password`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...getAuthHeaders(),
+    },
+    body: JSON.stringify({
+      current_password: currentPassword,
+      new_password: newPassword,
+    }),
+  })
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ detail: 'Failed to change password' }))
+    throw new Error(error.detail || 'Failed to change password')
+  }
+}
+
+// ============================================
 // Utility
 // ============================================
 

@@ -12,7 +12,8 @@ from .routers import (
     literature_router,
     files_router,
     projects_router,
-    chats_router
+    chats_router,
+    auth_router
 )
 from .database import engine, Base
 
@@ -71,6 +72,7 @@ app.add_middleware(
 )
 
 # Include routers - New GeoMind 3.0 APIs
+app.include_router(auth_router, prefix="/api/auth", tags=["Authentication"])
 app.include_router(projects_router, prefix="/api/projects", tags=["Projects"])
 app.include_router(chats_router, prefix="/api/chats", tags=["Chats"])
 
