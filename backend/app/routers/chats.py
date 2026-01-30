@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from typing import Optional, List
 from uuid import UUID
 
-from ..database import get_db, Chat, Message, Project
+from ..database import get_db, Chat, Message, Project, User
 from ..schemas.chat import (
     ChatCreate,
     ChatUpdate,
@@ -21,6 +21,7 @@ from ..services.claude import claude_service
 from ..services.qdrant import qdrant_service
 from ..services.intent import detect_intent
 from ..services.skills import get_skill_prompt
+from ..services.auth import get_current_user
 
 router = APIRouter()
 
@@ -55,16 +56,21 @@ async def list_chats(
     project_id: Optional[UUID] = None,
     skip: int = 0,
     limit: int = 50,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: Optional[User] = Depends(get_current_user)
 ):
     """
-    Get all chats, optionally filtered by project.
+    Get all chats for the current user.
+    If not authenticated, returns empty list.
 
     - **project_id**: Filter by project (optional)
     - **skip**: Pagination offset
     - **limit**: Maximum results
     """
-    query = db.query(Chat)
+    if not current_user:
+        return ChatListResponse(chats=[], total=0)
+
+    query = db.query(Chat).filter(Chat.user_id == current_user.id)
 
     if project_id:
         query = query.filter(Chat.project_id == project_id)
@@ -84,7 +90,8 @@ async def list_chats(
 @router.post("", response_model=ChatResponse)
 async def create_chat(
     chat: ChatCreate,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: Optional[User] = Depends(get_current_user)
 ):
     """
     Create a new chat.
@@ -95,14 +102,18 @@ async def create_chat(
     """
     # Verify project exists if provided
     if chat.project_id:
-        project = db.query(Project).filter(Project.id == chat.project_id).first()
+        query = db.query(Project).filter(Project.id == chat.project_id)
+        if current_user:
+            query = query.filter(Project.user_id == current_user.id)
+        project = query.first()
         if not project:
             raise HTTPException(status_code=404, detail="Project not found")
 
     db_chat = Chat(
         project_id=chat.project_id,
         title=chat.title,
-        chat_type=chat.chat_type
+        chat_type=chat.chat_type,
+        user_id=current_user.id if current_user else None
     )
     db.add(db_chat)
     db.commit()
@@ -114,14 +125,20 @@ async def create_chat(
 @router.get("/{chat_id}", response_model=ChatResponse)
 async def get_chat(
     chat_id: UUID,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: Optional[User] = Depends(get_current_user)
 ):
     """
     Get a specific chat with all messages.
 
     - **chat_id**: Chat UUID
     """
-    chat = db.query(Chat).filter(Chat.id == chat_id).first()
+    query = db.query(Chat).filter(Chat.id == chat_id)
+
+    if current_user:
+        query = query.filter(Chat.user_id == current_user.id)
+
+    chat = query.first()
 
     if not chat:
         raise HTTPException(status_code=404, detail="Chat not found")
@@ -133,7 +150,8 @@ async def get_chat(
 async def update_chat(
     chat_id: UUID,
     chat_update: ChatUpdate,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: Optional[User] = Depends(get_current_user)
 ):
     """
     Update a chat.
@@ -142,7 +160,12 @@ async def update_chat(
     - **title**: New title
     - **chat_type**: New chat type
     """
-    chat = db.query(Chat).filter(Chat.id == chat_id).first()
+    query = db.query(Chat).filter(Chat.id == chat_id)
+
+    if current_user:
+        query = query.filter(Chat.user_id == current_user.id)
+
+    chat = query.first()
 
     if not chat:
         raise HTTPException(status_code=404, detail="Chat not found")
@@ -161,14 +184,20 @@ async def update_chat(
 @router.delete("/{chat_id}")
 async def delete_chat(
     chat_id: UUID,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: Optional[User] = Depends(get_current_user)
 ):
     """
     Delete a chat and all its messages.
 
     - **chat_id**: Chat UUID
     """
-    chat = db.query(Chat).filter(Chat.id == chat_id).first()
+    query = db.query(Chat).filter(Chat.id == chat_id)
+
+    if current_user:
+        query = query.filter(Chat.user_id == current_user.id)
+
+    chat = query.first()
 
     if not chat:
         raise HTTPException(status_code=404, detail="Chat not found")
@@ -183,7 +212,8 @@ async def delete_chat(
 async def send_message(
     chat_id: UUID,
     request: SendMessageRequest,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: Optional[User] = Depends(get_current_user)
 ):
     """
     Send a message and get AI response.
@@ -195,7 +225,12 @@ async def send_message(
     - **project_id**: Project for memory access
     - **skills**: Skills to activate
     """
-    chat = db.query(Chat).filter(Chat.id == chat_id).first()
+    query = db.query(Chat).filter(Chat.id == chat_id)
+
+    if current_user:
+        query = query.filter(Chat.user_id == current_user.id)
+
+    chat = query.first()
 
     if not chat:
         raise HTTPException(status_code=404, detail="Chat not found")

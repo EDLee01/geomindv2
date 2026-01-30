@@ -7,13 +7,14 @@ from sqlalchemy.orm import Session
 from typing import Optional
 from uuid import UUID
 
-from ..database import get_db, Project, Chat
+from ..database import get_db, Project, Chat, User
 from ..schemas.project import (
     ProjectCreate,
     ProjectUpdate,
     ProjectResponse,
     ProjectListResponse
 )
+from ..services.auth import get_current_user
 
 router = APIRouter()
 
@@ -37,16 +38,22 @@ def project_to_response(project: Project) -> ProjectResponse:
 async def list_projects(
     skip: int = 0,
     limit: int = 50,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: Optional[User] = Depends(get_current_user)
 ):
     """
-    Get all projects.
+    Get all projects for the current user.
+    If not authenticated, returns empty list.
 
     - **skip**: Number of records to skip (pagination)
     - **limit**: Maximum records to return
     """
-    projects = db.query(Project).order_by(Project.updated_at.desc()).offset(skip).limit(limit).all()
-    total = db.query(Project).count()
+    if not current_user:
+        return ProjectListResponse(projects=[], total=0)
+
+    query = db.query(Project).filter(Project.user_id == current_user.id)
+    projects = query.order_by(Project.updated_at.desc()).offset(skip).limit(limit).all()
+    total = query.count()
 
     return ProjectListResponse(
         projects=[project_to_response(p) for p in projects],
@@ -57,7 +64,8 @@ async def list_projects(
 @router.post("", response_model=ProjectResponse)
 async def create_project(
     project: ProjectCreate,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: Optional[User] = Depends(get_current_user)
 ):
     """
     Create a new project.
@@ -67,7 +75,8 @@ async def create_project(
     """
     db_project = Project(
         name=project.name,
-        topic=project.topic
+        topic=project.topic,
+        user_id=current_user.id if current_user else None
     )
     db.add(db_project)
     db.commit()
@@ -79,14 +88,21 @@ async def create_project(
 @router.get("/{project_id}", response_model=ProjectResponse)
 async def get_project(
     project_id: UUID,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: Optional[User] = Depends(get_current_user)
 ):
     """
     Get a specific project by ID including its memory.
 
     - **project_id**: Project UUID
     """
-    project = db.query(Project).filter(Project.id == project_id).first()
+    query = db.query(Project).filter(Project.id == project_id)
+
+    # If authenticated, only allow access to own projects
+    if current_user:
+        query = query.filter(Project.user_id == current_user.id)
+
+    project = query.first()
 
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
@@ -98,7 +114,8 @@ async def get_project(
 async def update_project(
     project_id: UUID,
     project_update: ProjectUpdate,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: Optional[User] = Depends(get_current_user)
 ):
     """
     Update a project.
@@ -109,7 +126,12 @@ async def update_project(
     - **stages**: Updated stage statuses
     - **memory**: Updated project memory
     """
-    project = db.query(Project).filter(Project.id == project_id).first()
+    query = db.query(Project).filter(Project.id == project_id)
+
+    if current_user:
+        query = query.filter(Project.user_id == current_user.id)
+
+    project = query.first()
 
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
@@ -133,14 +155,20 @@ async def update_project(
 @router.delete("/{project_id}")
 async def delete_project(
     project_id: UUID,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: Optional[User] = Depends(get_current_user)
 ):
     """
     Delete a project and all its chats/files.
 
     - **project_id**: Project UUID
     """
-    project = db.query(Project).filter(Project.id == project_id).first()
+    query = db.query(Project).filter(Project.id == project_id)
+
+    if current_user:
+        query = query.filter(Project.user_id == current_user.id)
+
+    project = query.first()
 
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
@@ -155,7 +183,8 @@ async def delete_project(
 async def update_project_memory(
     project_id: UUID,
     memory_update: dict,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: Optional[User] = Depends(get_current_user)
 ):
     """
     Partially update project memory.
@@ -164,7 +193,12 @@ async def update_project_memory(
     - **project_id**: Project UUID
     - **memory_update**: Fields to update/add to memory
     """
-    project = db.query(Project).filter(Project.id == project_id).first()
+    query = db.query(Project).filter(Project.id == project_id)
+
+    if current_user:
+        query = query.filter(Project.user_id == current_user.id)
+
+    project = query.first()
 
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
@@ -184,7 +218,8 @@ async def update_project_memory(
 async def update_project_stages(
     project_id: UUID,
     stages_update: dict,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: Optional[User] = Depends(get_current_user)
 ):
     """
     Update project stage statuses.
@@ -192,7 +227,12 @@ async def update_project_stages(
     - **project_id**: Project UUID
     - **stages_update**: Stage names and their new statuses
     """
-    project = db.query(Project).filter(Project.id == project_id).first()
+    query = db.query(Project).filter(Project.id == project_id)
+
+    if current_user:
+        query = query.filter(Project.user_id == current_user.id)
+
+    project = query.first()
 
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
@@ -211,14 +251,20 @@ async def update_project_stages(
 @router.get("/{project_id}/chats")
 async def get_project_chats(
     project_id: UUID,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: Optional[User] = Depends(get_current_user)
 ):
     """
     Get all chats for a project.
 
     - **project_id**: Project UUID
     """
-    project = db.query(Project).filter(Project.id == project_id).first()
+    query = db.query(Project).filter(Project.id == project_id)
+
+    if current_user:
+        query = query.filter(Project.user_id == current_user.id)
+
+    project = query.first()
 
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")

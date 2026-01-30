@@ -150,7 +150,9 @@ export interface ChatResponse {
  * Get all projects
  */
 export async function getProjects(): Promise<{ projects: Project[], total: number }> {
-  const response = await fetch(`${API_BASE_URL}/api/projects`)
+  const response = await fetch(`${API_BASE_URL}/api/projects`, {
+    headers: { ...getAuthHeaders() },
+  })
   if (!response.ok) {
     throw new Error('Failed to fetch projects')
   }
@@ -163,7 +165,7 @@ export async function getProjects(): Promise<{ projects: Project[], total: numbe
 export async function createProject(name: string, topic?: string): Promise<Project> {
   const response = await fetch(`${API_BASE_URL}/api/projects`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
     body: JSON.stringify({ name, topic }),
   })
   if (!response.ok) {
@@ -176,7 +178,9 @@ export async function createProject(name: string, topic?: string): Promise<Proje
  * Get a specific project
  */
 export async function getProject(projectId: string): Promise<Project> {
-  const response = await fetch(`${API_BASE_URL}/api/projects/${projectId}`)
+  const response = await fetch(`${API_BASE_URL}/api/projects/${projectId}`, {
+    headers: { ...getAuthHeaders() },
+  })
   if (!response.ok) {
     throw new Error('Failed to fetch project')
   }
@@ -189,7 +193,7 @@ export async function getProject(projectId: string): Promise<Project> {
 export async function updateProject(projectId: string, data: Partial<Project>): Promise<Project> {
   const response = await fetch(`${API_BASE_URL}/api/projects/${projectId}`, {
     method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
     body: JSON.stringify(data),
   })
   if (!response.ok) {
@@ -204,6 +208,7 @@ export async function updateProject(projectId: string, data: Partial<Project>): 
 export async function deleteProject(projectId: string): Promise<void> {
   const response = await fetch(`${API_BASE_URL}/api/projects/${projectId}`, {
     method: 'DELETE',
+    headers: { ...getAuthHeaders() },
   })
   if (!response.ok) {
     throw new Error('Failed to delete project')
@@ -214,7 +219,9 @@ export async function deleteProject(projectId: string): Promise<void> {
  * Get project chats
  */
 export async function getProjectChats(projectId: string): Promise<{ chats: Chat[], total: number }> {
-  const response = await fetch(`${API_BASE_URL}/api/projects/${projectId}/chats`)
+  const response = await fetch(`${API_BASE_URL}/api/projects/${projectId}/chats`, {
+    headers: { ...getAuthHeaders() },
+  })
   if (!response.ok) {
     throw new Error('Failed to fetch project chats')
   }
@@ -230,7 +237,9 @@ export async function getProjectChats(projectId: string): Promise<{ chats: Chat[
  */
 export async function getChats(projectId?: string): Promise<{ chats: Chat[], total: number }> {
   const params = projectId ? `?project_id=${projectId}` : ''
-  const response = await fetch(`${API_BASE_URL}/api/chats${params}`)
+  const response = await fetch(`${API_BASE_URL}/api/chats${params}`, {
+    headers: { ...getAuthHeaders() },
+  })
   if (!response.ok) {
     throw new Error('Failed to fetch chats')
   }
@@ -243,7 +252,7 @@ export async function getChats(projectId?: string): Promise<{ chats: Chat[], tot
 export async function createChat(projectId?: string, title?: string, chatType?: string): Promise<Chat> {
   const response = await fetch(`${API_BASE_URL}/api/chats`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
     body: JSON.stringify({
       project_id: projectId,
       title: title || 'New Chat',
@@ -260,7 +269,9 @@ export async function createChat(projectId?: string, title?: string, chatType?: 
  * Get a specific chat with messages
  */
 export async function getChat(chatId: string): Promise<Chat> {
-  const response = await fetch(`${API_BASE_URL}/api/chats/${chatId}`)
+  const response = await fetch(`${API_BASE_URL}/api/chats/${chatId}`, {
+    headers: { ...getAuthHeaders() },
+  })
   if (!response.ok) {
     throw new Error('Failed to fetch chat')
   }
@@ -273,6 +284,7 @@ export async function getChat(chatId: string): Promise<Chat> {
 export async function deleteChat(chatId: string): Promise<void> {
   const response = await fetch(`${API_BASE_URL}/api/chats/${chatId}`, {
     method: 'DELETE',
+    headers: { ...getAuthHeaders() },
   })
   if (!response.ok) {
     throw new Error('Failed to delete chat')
@@ -301,7 +313,7 @@ export async function sendMessage(
 }> {
   const response = await fetch(`${API_BASE_URL}/api/chats/${chatId}/messages`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
     body: JSON.stringify({
       content,
       search_literature: options?.searchLiterature ?? false,
@@ -372,6 +384,7 @@ export async function uploadFile(file: File): Promise<FileUploadResponse> {
 
   const response = await fetch(`${API_BASE_URL}/api/files/upload`, {
     method: 'POST',
+    headers: { ...getAuthHeaders() },
     body: formData,
   })
 
@@ -520,7 +533,7 @@ export function clearAuthToken(): void {
 /**
  * Get auth headers
  */
-function getAuthHeaders(): Record<string, string> {
+export function getAuthHeaders(): Record<string, string> {
   const token = getAuthToken()
   if (token) {
     return { 'Authorization': `Bearer ${token}` }
