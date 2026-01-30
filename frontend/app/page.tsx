@@ -50,12 +50,24 @@ export default function Home() {
     return () => window.removeEventListener('resize', checkDesktop)
   }, [])
 
-  // Load projects and quick chats on mount
+  // Load projects and quick chats when auth state changes
   useEffect(() => {
-    loadData()
-  }, [])
+    if (!isAuthLoading) {
+      loadData()
+    }
+  }, [isAuthLoading, isAuthenticated])
 
   const loadData = async () => {
+    // Clear data if not authenticated
+    if (!isAuthenticated) {
+      setProjects([])
+      setQuickChats([])
+      setActiveProject(null)
+      setActiveChat(null)
+      setMessages([])
+      return
+    }
+
     try {
       const [projectsRes, chatsRes] = await Promise.all([
         getProjects().catch(() => ({ projects: [], total: 0 })),
