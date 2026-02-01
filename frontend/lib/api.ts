@@ -1,11 +1,130 @@
 /**
- * GeoMind API Client
+ * GeoMind 3.0 API Client
  * Handles all communication with the backend API
  */
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
 
+// ============================================
 // Types
+// ============================================
+
+// Project types
+export interface Project {
+  id: string
+  name: string
+  topic: string | null
+  stages: ProjectStages
+  memory: ProjectMemory
+  created_at: string
+  updated_at: string
+  chat_count: number
+  file_count: number
+}
+
+export interface ProjectStages {
+  literature: 'pending' | 'in_progress' | 'done'
+  gap: 'pending' | 'in_progress' | 'done'
+  methodology: 'pending' | 'in_progress' | 'done'
+  data_prep: 'pending' | 'in_progress' | 'done'
+  execution: 'pending' | 'in_progress' | 'done'
+  visualization: 'pending' | 'in_progress' | 'done'
+  results: 'pending' | 'in_progress' | 'done'
+  discussion: 'pending' | 'in_progress' | 'done'
+  references: 'pending' | 'in_progress' | 'done'
+  draft: 'pending' | 'in_progress' | 'done'
+}
+
+export interface ProjectMemory {
+  literature_list: any[]
+  gap_selected: string | null
+  methodology: any | null
+  data_profile: any | null
+  results_data: any | null
+  figures: any[]
+  tables: any[]
+  sections: {
+    introduction: string | null
+    methods: string | null
+    results: string | null
+    discussion: string | null
+  }
+}
+
+// Chat types
+export interface Chat {
+  id: string
+  project_id: string | null
+  title: string
+  chat_type: string
+  created_at: string
+  updated_at: string
+  messages: Message[]
+  message_count: number
+}
+
+export interface Message {
+  id: string
+  role: 'user' | 'assistant' | 'system'
+  content: string
+  artifacts: Artifact[]
+  created_at: string
+}
+
+export interface Artifact {
+  id: string
+  type: 'markdown' | 'code' | 'image' | 'table' | 'bibtex' | 'references'
+  title: string
+  content: string
+  language?: string
+}
+
+// Literature types
+export interface Paper {
+  id: string
+  title: string
+  authors: string[]
+  author_display: string
+  year: number | null
+  journal: string
+  abstract: string
+  citations: number
+  score: number
+  doi: string
+  impact_factor?: number
+  cas_zone?: string
+  verified?: boolean
+  search_reason?: string
+}
+
+export interface LiteratureSearchResult {
+  total: number
+  query: string
+  papers: Paper[]
+  verified_count: number
+  removed_count: number
+  message?: string
+}
+
+// File types
+export interface FilePreview {
+  rows: number
+  columns: number
+  column_names: string[]
+  head: Record<string, any>[]
+  dtypes: Record<string, string>
+}
+
+export interface FileUploadResponse {
+  id: string
+  filename: string
+  file_type: string
+  file_size: string
+  preview: FilePreview | null
+  created_at: string
+}
+
+// Legacy types (for compatibility)
 export interface ChatMessage {
   role: 'user' | 'assistant'
   content: string
@@ -23,96 +142,223 @@ export interface ChatResponse {
   }[]
 }
 
-export interface Paper {
-  id: string
-  title: string
-  authors: string[]
-  author_display: string
-  year: number | null
-  journal: string
-  abstract: string
-  citations: number
-  score: number
-  openalex_url: string
-  impact_factor?: number
-  cas_zone?: string
-  is_top?: boolean
-}
-
-export interface LiteratureSearchResult {
-  total: number
-  query: string
-  papers: Paper[]
-}
-
-export interface FilePreview {
-  rows: number
-  columns: number
-  column_names: string[]
-  head: Record<string, any>[]
-  dtypes: Record<string, string>
-}
-
-export interface FileUploadResponse {
-  id: string
-  filename: string
-  size: number
-  preview: FilePreview
-}
-
-// API Functions
+// ============================================
+// Project API
+// ============================================
 
 /**
- * Send a chat completion request
+ * Get all projects
  */
-export async function chatCompletion(
-  messages: ChatMessage[],
-  searchLiterature: boolean = true,
-  fileContext?: string
-): Promise<ChatResponse> {
-  const response = await fetch(`${API_BASE_URL}/api/chat/completions`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      messages,
-      search_literature: searchLiterature,
-      file_context: fileContext,
-    }),
+export async function getProjects(): Promise<{ projects: Project[], total: number }> {
+  const response = await fetch(`${API_BASE_URL}/api/projects`, {
+    headers: { ...getAuthHeaders() },
   })
-
   if (!response.ok) {
-    const error = await response.json().catch(() => ({ detail: 'Unknown error' }))
-    throw new Error(error.detail || 'Chat request failed')
+    throw new Error('Failed to fetch projects')
   }
-
   return response.json()
 }
+
+/**
+ * Create a new project
+ */
+export async function createProject(name: string, topic?: string): Promise<Project> {
+  const response = await fetch(`${API_BASE_URL}/api/projects`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+    body: JSON.stringify({ name, topic }),
+  })
+  if (!response.ok) {
+    throw new Error('Failed to create project')
+  }
+  return response.json()
+}
+
+/**
+ * Get a specific project
+ */
+export async function getProject(projectId: string): Promise<Project> {
+  const response = await fetch(`${API_BASE_URL}/api/projects/${projectId}`, {
+    headers: { ...getAuthHeaders() },
+  })
+  if (!response.ok) {
+    throw new Error('Failed to fetch project')
+  }
+  return response.json()
+}
+
+/**
+ * Update a project
+ */
+export async function updateProject(projectId: string, data: Partial<Project>): Promise<Project> {
+  const response = await fetch(`${API_BASE_URL}/api/projects/${projectId}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+    body: JSON.stringify(data),
+  })
+  if (!response.ok) {
+    throw new Error('Failed to update project')
+  }
+  return response.json()
+}
+
+/**
+ * Delete a project
+ */
+export async function deleteProject(projectId: string): Promise<void> {
+  const response = await fetch(`${API_BASE_URL}/api/projects/${projectId}`, {
+    method: 'DELETE',
+    headers: { ...getAuthHeaders() },
+  })
+  if (!response.ok) {
+    throw new Error('Failed to delete project')
+  }
+}
+
+/**
+ * Get project chats
+ */
+export async function getProjectChats(projectId: string): Promise<{ chats: Chat[], total: number }> {
+  const response = await fetch(`${API_BASE_URL}/api/projects/${projectId}/chats`, {
+    headers: { ...getAuthHeaders() },
+  })
+  if (!response.ok) {
+    throw new Error('Failed to fetch project chats')
+  }
+  return response.json()
+}
+
+// ============================================
+// Chat API
+// ============================================
+
+/**
+ * Get all chats (quick chats without project)
+ */
+export async function getChats(projectId?: string): Promise<{ chats: Chat[], total: number }> {
+  const params = projectId ? `?project_id=${projectId}` : ''
+  const response = await fetch(`${API_BASE_URL}/api/chats${params}`, {
+    headers: { ...getAuthHeaders() },
+  })
+  if (!response.ok) {
+    throw new Error('Failed to fetch chats')
+  }
+  return response.json()
+}
+
+/**
+ * Create a new chat
+ */
+export async function createChat(projectId?: string, title?: string, chatType?: string): Promise<Chat> {
+  const response = await fetch(`${API_BASE_URL}/api/chats`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+    body: JSON.stringify({
+      project_id: projectId,
+      title: title || 'New Chat',
+      chat_type: chatType || 'general',
+    }),
+  })
+  if (!response.ok) {
+    throw new Error('Failed to create chat')
+  }
+  return response.json()
+}
+
+/**
+ * Get a specific chat with messages
+ */
+export async function getChat(chatId: string): Promise<Chat> {
+  const response = await fetch(`${API_BASE_URL}/api/chats/${chatId}`, {
+    headers: { ...getAuthHeaders() },
+  })
+  if (!response.ok) {
+    throw new Error('Failed to fetch chat')
+  }
+  return response.json()
+}
+
+/**
+ * Delete a chat
+ */
+export async function deleteChat(chatId: string): Promise<void> {
+  const response = await fetch(`${API_BASE_URL}/api/chats/${chatId}`, {
+    method: 'DELETE',
+    headers: { ...getAuthHeaders() },
+  })
+  if (!response.ok) {
+    throw new Error('Failed to delete chat')
+  }
+}
+
+/**
+ * Send a message to a chat
+ */
+export async function sendMessage(
+  chatId: string,
+  content: string,
+  options?: {
+    searchLiterature?: boolean
+    fileContext?: string
+    projectId?: string
+    skills?: string[]
+  }
+): Promise<{
+  user_message: Message
+  assistant_message: Message
+  literature: any[]
+  artifacts: Artifact[]
+  intent: string | null
+  suggested_skills: string[]
+}> {
+  const response = await fetch(`${API_BASE_URL}/api/chats/${chatId}/messages`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+    body: JSON.stringify({
+      content,
+      search_literature: options?.searchLiterature ?? false,
+      file_context: options?.fileContext,
+      project_id: options?.projectId,
+      skills: options?.skills || [],
+    }),
+  })
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ detail: 'Unknown error' }))
+    throw new Error(error.detail || 'Failed to send message')
+  }
+  return response.json()
+}
+
+// ============================================
+// Literature API
+// ============================================
 
 /**
  * Search for scientific literature
  */
 export async function searchLiterature(
   query: string,
-  limit: number = 15,
-  yearFrom?: number,
-  yearTo?: number,
-  minCitations?: number
+  options?: {
+    limit?: number
+    yearFrom?: number
+    yearTo?: number
+    minCitations?: number
+    autoVerify?: boolean
+  }
 ): Promise<LiteratureSearchResult> {
   const params = new URLSearchParams({
     q: query,
-    limit: limit.toString(),
+    limit: (options?.limit || 20).toString(),
   })
 
-  if (yearFrom !== undefined) {
-    params.append('year_from', yearFrom.toString())
+  if (options?.yearFrom !== undefined) {
+    params.append('year_from', options.yearFrom.toString())
   }
-  if (yearTo !== undefined) {
-    params.append('year_to', yearTo.toString())
+  if (options?.yearTo !== undefined) {
+    params.append('year_to', options.yearTo.toString())
   }
-  if (minCitations !== undefined) {
-    params.append('min_citations', minCitations.toString())
+  if (options?.minCitations !== undefined) {
+    params.append('min_citations', options.minCitations.toString())
   }
 
   const response = await fetch(`${API_BASE_URL}/api/literature/search?${params}`)
@@ -125,6 +371,10 @@ export async function searchLiterature(
   return response.json()
 }
 
+// ============================================
+// File API
+// ============================================
+
 /**
  * Upload a file for analysis
  */
@@ -134,6 +384,7 @@ export async function uploadFile(file: File): Promise<FileUploadResponse> {
 
   const response = await fetch(`${API_BASE_URL}/api/files/upload`, {
     method: 'POST',
+    headers: { ...getAuthHeaders() },
     body: formData,
   })
 
@@ -197,10 +448,223 @@ export async function deleteFile(fileId: string): Promise<void> {
   }
 }
 
+// ============================================
+// Legacy API (for compatibility)
+// ============================================
+
+/**
+ * Send a chat completion request (legacy endpoint)
+ */
+export async function chatCompletion(
+  messages: ChatMessage[],
+  searchLiterature: boolean = true,
+  fileContext?: string
+): Promise<ChatResponse> {
+  const response = await fetch(`${API_BASE_URL}/api/chat/completions`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      messages,
+      search_literature: searchLiterature,
+      file_context: fileContext,
+    }),
+  })
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ detail: 'Unknown error' }))
+    throw new Error(error.detail || 'Chat request failed')
+  }
+
+  return response.json()
+}
+
+// ============================================
+// Auth Types
+// ============================================
+
+export interface User {
+  id: string
+  email: string
+  username: string
+  full_name: string | null
+  avatar_url: string | null
+  is_active: boolean
+  is_verified: boolean
+  created_at: string
+  last_login: string | null
+}
+
+export interface TokenResponse {
+  access_token: string
+  token_type: string
+  user: User
+}
+
+// ============================================
+// Auth API
+// ============================================
+
+/**
+ * Get stored auth token
+ */
+export function getAuthToken(): string | null {
+  if (typeof window === 'undefined') return null
+  return localStorage.getItem('geomind_token')
+}
+
+/**
+ * Set auth token
+ */
+export function setAuthToken(token: string): void {
+  if (typeof window === 'undefined') return
+  localStorage.setItem('geomind_token', token)
+}
+
+/**
+ * Clear auth token
+ */
+export function clearAuthToken(): void {
+  if (typeof window === 'undefined') return
+  localStorage.removeItem('geomind_token')
+}
+
+/**
+ * Get auth headers
+ */
+export function getAuthHeaders(): Record<string, string> {
+  const token = getAuthToken()
+  if (token) {
+    return { 'Authorization': `Bearer ${token}` }
+  }
+  return {}
+}
+
+/**
+ * Register a new user
+ */
+export async function register(
+  email: string,
+  username: string,
+  password: string,
+  fullName?: string
+): Promise<TokenResponse> {
+  const response = await fetch(`${API_BASE_URL}/api/auth/register`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      email,
+      username,
+      password,
+      full_name: fullName,
+    }),
+  })
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ detail: 'Registration failed' }))
+    throw new Error(error.detail || 'Registration failed')
+  }
+
+  const data = await response.json()
+  setAuthToken(data.access_token)
+  return data
+}
+
+/**
+ * Login with username/email and password
+ */
+export async function login(username: string, password: string): Promise<TokenResponse> {
+  const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username, password }),
+  })
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ detail: 'Login failed' }))
+    throw new Error(error.detail || 'Login failed')
+  }
+
+  const data = await response.json()
+  setAuthToken(data.access_token)
+  return data
+}
+
+/**
+ * Logout the current user
+ */
+export function logout(): void {
+  clearAuthToken()
+}
+
+/**
+ * Get current user info
+ */
+export async function getCurrentUser(): Promise<User> {
+  const response = await fetch(`${API_BASE_URL}/api/auth/me`, {
+    headers: {
+      ...getAuthHeaders(),
+    },
+  })
+
+  if (!response.ok) {
+    throw new Error('Not authenticated')
+  }
+
+  return response.json()
+}
+
+/**
+ * Update current user profile
+ */
+export async function updateProfile(data: { full_name?: string; avatar_url?: string }): Promise<User> {
+  const response = await fetch(`${API_BASE_URL}/api/auth/me`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+      ...getAuthHeaders(),
+    },
+    body: JSON.stringify(data),
+  })
+
+  if (!response.ok) {
+    throw new Error('Failed to update profile')
+  }
+
+  return response.json()
+}
+
+/**
+ * Change password
+ */
+export async function changePassword(currentPassword: string, newPassword: string): Promise<void> {
+  const response = await fetch(`${API_BASE_URL}/api/auth/change-password`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...getAuthHeaders(),
+    },
+    body: JSON.stringify({
+      current_password: currentPassword,
+      new_password: newPassword,
+    }),
+  })
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ detail: 'Failed to change password' }))
+    throw new Error(error.detail || 'Failed to change password')
+  }
+}
+
+// ============================================
+// Utility
+// ============================================
+
 /**
  * Health check
  */
-export async function healthCheck(): Promise<{ status: string }> {
+export async function healthCheck(): Promise<{ status: string; version: string }> {
   const response = await fetch(`${API_BASE_URL}/health`)
 
   if (!response.ok) {

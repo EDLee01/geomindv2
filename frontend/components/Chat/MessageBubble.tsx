@@ -1,19 +1,19 @@
 'use client'
 
 import { useState } from 'react'
-import { Message } from '@/app/page'
-import { BookOpen, ChevronDown, ChevronUp, ExternalLink, Copy, Check } from 'lucide-react'
+import { Message, Artifact } from '@/lib/api'
+import { BookOpen, ChevronDown, ChevronUp, ExternalLink, Copy, Check, Code, FileText } from 'lucide-react'
 
 interface MessageBubbleProps {
   message: Message
+  onArtifactClick?: (artifact: Artifact) => void
 }
 
-export function MessageBubble({ message }: MessageBubbleProps) {
-  const [showLiterature, setShowLiterature] = useState(false)
+export function MessageBubble({ message, onArtifactClick }: MessageBubbleProps) {
   const [copied, setCopied] = useState(false)
 
   const isUser = message.role === 'user'
-  const hasLiterature = message.literature && message.literature.length > 0
+  const hasArtifacts = message.artifacts && message.artifacts.length > 0
 
   const copyToClipboard = async () => {
     await navigator.clipboard.writeText(message.content)
@@ -21,98 +21,123 @@ export function MessageBubble({ message }: MessageBubbleProps) {
     setTimeout(() => setCopied(false), 2000)
   }
 
-  const formatTime = (date: Date) => {
-    return new Date(date).toLocaleTimeString('en-US', {
+  const formatTime = (dateStr: string) => {
+    return new Date(dateStr).toLocaleTimeString('en-US', {
       hour: '2-digit',
       minute: '2-digit'
     })
   }
 
+  // Simple markdown rendering
+  const renderContent = (content: string) => {
+    // Handle code blocks
+    const codeBlockRegex = /```(\w+)?\n([\s\S]*?)```/g
+    const parts = []
+    let lastIndex = 0
+    let match
+
+    while ((match = codeBlockRegex.exec(content)) !== null) {
+      // Add text before code block
+      if (match.index > lastIndex) {
+        parts.push(
+          <span key={lastIndex} className="whitespace-pre-wrap">
+            {renderInlineMarkdown(content.slice(lastIndex, match.index))}
+          </span>
+        )
+      }
+
+      // Add code block
+      const language = match[1] || 'text'
+      const code = match[2]
+      parts.push(
+        <pre key={match.index} className="bg-geo-primary-900 text-gray-100 p-4 rounded-lg overflow-x-auto my-3 text-sm font-mono">
+          <div className="flex justify-between items-center mb-2 text-xs text-gray-400">
+            <span>{language}</span>
+            <button
+              onClick={() => navigator.clipboard.writeText(code)}
+              className="hover:text-white"
+            >
+              <Copy size={14} />
+            </button>
+          </div>
+          <code>{code}</code>
+        </pre>
+      )
+
+      lastIndex = match.index + match[0].length
+    }
+
+    // Add remaining text
+    if (lastIndex < content.length) {
+      parts.push(
+        <span key={lastIndex} className="whitespace-pre-wrap">
+          {renderInlineMarkdown(content.slice(lastIndex))}
+        </span>
+      )
+    }
+
+    return parts.length > 0 ? parts : <span className="whitespace-pre-wrap">{content}</span>
+  }
+
+  const renderInlineMarkdown = (text: string) => {
+    return text
+      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+      .replace(/\*(.*?)\*/g, '<em>$1</em>')
+      .replace(/`([^`]+)`/g, '<code class="bg-gray-200 px-1 py-0.5 rounded text-sm">$1</code>')
+  }
+
   return (
     <div className={`flex items-start gap-3 ${isUser ? 'flex-row-reverse' : ''}`}>
       {/* Avatar */}
-      <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm flex-shrink-0 ${
-        isUser ? 'bg-slate-600 text-white' : 'bg-blue-600 text-white'
+      <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm flex-shrink-0 ${
+        isUser ? 'bg-geo-secondary text-white' : 'bg-geo-primary text-white'
       }`}>
         {isUser ? '👤' : '🌍'}
       </div>
 
       {/* Message Content */}
-      <div className={`flex flex-col max-w-[70%] ${isUser ? 'items-end' : 'items-start'}`}>
-        <div className={`rounded-lg px-4 py-3 ${
+      <div className={`flex flex-col max-w-[75%] ${isUser ? 'items-end' : 'items-start'}`}>
+        <div className={`rounded-2xl px-4 py-3 ${
           isUser
-            ? 'bg-blue-600 text-white'
-            : 'bg-slate-100 text-slate-800'
+            ? 'bg-geo-secondary text-white'
+            : 'bg-white text-geo-text shadow-sm border border-gray-100'
         }`}>
           {/* Header for assistant */}
           {!isUser && (
-            <div className="flex items-center justify-between mb-2 pb-2 border-b border-slate-200">
-              <span className="font-medium text-slate-700">GeoMind</span>
-              <span className="text-xs text-slate-500">{formatTime(message.timestamp)}</span>
+            <div className="flex items-center justify-between mb-2 pb-2 border-b border-gray-100">
+              <span className="font-semibold text-geo-primary">GeoMind</span>
+              <span className="text-xs text-geo-text-muted">{formatTime(message.created_at)}</span>
             </div>
           )}
 
           {/* Message text */}
-          <div className={`${isUser ? '' : 'message-content'} whitespace-pre-wrap`}>
-            {message.content}
+          <div className={`${isUser ? '' : 'prose prose-sm max-w-none'}`}>
+            {renderContent(message.content)}
           </div>
 
-          {/* Literature Section */}
-          {hasLiterature && (
-            <div className="mt-4 pt-3 border-t border-slate-200">
-              <button
-                onClick={() => setShowLiterature(!showLiterature)}
-                className="flex items-center gap-2 text-sm text-blue-600 hover:text-blue-700"
-              >
-                <BookOpen size={16} />
-                <span>Related Literature ({message.literature!.length})</span>
-                {showLiterature ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-              </button>
-
-              {showLiterature && (
-                <div className="mt-3 space-y-2">
-                  {message.literature!.map((paper, index) => (
-                    <div
-                      key={index}
-                      className="p-3 bg-white rounded-lg border border-slate-200"
-                    >
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="flex-1">
-                          <p className="text-sm font-medium text-slate-800 line-clamp-2">
-                            {paper.title}
-                          </p>
-                          <p className="text-xs text-slate-600 mt-1">
-                            {paper.author_display} ({paper.year}) | {paper.journal}
-                          </p>
-                        </div>
-                        {paper.openalex_url && (
-                          <a
-                            href={paper.openalex_url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-blue-600 hover:text-blue-700 flex-shrink-0"
-                          >
-                            <ExternalLink size={16} />
-                          </a>
-                        )}
-                      </div>
-                      {paper.score && (
-                        <div className="mt-2 flex items-center gap-2">
-                          <div className="h-1.5 flex-1 bg-slate-200 rounded-full">
-                            <div
-                              className="h-full bg-emerald-500 rounded-full"
-                              style={{ width: `${paper.score * 100}%` }}
-                            />
-                          </div>
-                          <span className="text-xs text-slate-500">
-                            {Math.round(paper.score * 100)}% match
-                          </span>
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
+          {/* Artifacts Section */}
+          {hasArtifacts && (
+            <div className="mt-4 pt-3 border-t border-gray-100 space-y-2">
+              <p className="text-xs text-geo-text-muted font-medium">Artifacts</p>
+              {message.artifacts.map((artifact) => (
+                <button
+                  key={artifact.id}
+                  onClick={() => onArtifactClick?.(artifact)}
+                  className="w-full flex items-center gap-2 p-2 bg-geo-accent-50 hover:bg-geo-accent-100 rounded-lg text-left transition-colors"
+                >
+                  {artifact.type === 'code' ? (
+                    <Code size={16} className="text-geo-accent" />
+                  ) : (
+                    <FileText size={16} className="text-geo-accent" />
+                  )}
+                  <span className="text-sm text-geo-accent-700 truncate flex-1">
+                    {artifact.title}
+                  </span>
+                  <span className="text-xs text-geo-accent-500 px-2 py-0.5 bg-geo-accent-100 rounded">
+                    {artifact.type}
+                  </span>
+                </button>
+              ))}
             </div>
           )}
         </div>
@@ -122,18 +147,18 @@ export function MessageBubble({ message }: MessageBubbleProps) {
           <div className="flex items-center gap-2 mt-1">
             <button
               onClick={copyToClipboard}
-              className="text-slate-400 hover:text-slate-600 p-1"
+              className="text-geo-text-muted hover:text-geo-text p-1 transition-colors"
               title="Copy to clipboard"
             >
-              {copied ? <Check size={14} /> : <Copy size={14} />}
+              {copied ? <Check size={14} className="text-geo-success" /> : <Copy size={14} />}
             </button>
           </div>
         )}
 
         {/* Timestamp for user messages */}
         {isUser && (
-          <span className="text-xs text-slate-400 mt-1">
-            {formatTime(message.timestamp)}
+          <span className="text-xs text-geo-text-muted mt-1">
+            {formatTime(message.created_at)}
           </span>
         )}
       </div>

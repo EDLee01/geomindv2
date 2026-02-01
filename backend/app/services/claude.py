@@ -1,6 +1,7 @@
 """
 Claude API Service
 Uses Zeabur AI Gateway (OpenAI-compatible format)
+Enhanced for GeoMind 3.0 with project memory and skills support
 """
 import httpx
 from typing import List, Dict, Any, Optional
@@ -79,42 +80,92 @@ class ClaudeService:
                     "usage": {}
                 }
 
-    def get_geomind_system_prompt(self, file_context: Optional[str] = None) -> str:
+    def get_geomind_system_prompt(
+        self,
+        file_context: Optional[str] = None,
+        project_memory: Optional[Dict[str, Any]] = None,
+        skills: Optional[List[str]] = None
+    ) -> str:
         """
         Get the GeoMind system prompt for earth science context.
 
         Args:
             file_context: Optional file data context to include
+            project_memory: Optional project memory for context
+            skills: Optional list of skill names to load
 
         Returns:
             System prompt string
         """
-        base_prompt = """You are GeoMind, an AI assistant specialized in Earth Sciences and environmental research.
+        base_prompt = """You are GeoMind 3.0, an AI research assistant specialized in Earth Sciences.
 
-Your expertise includes:
+## Core Capabilities
+- **文献检索**: 70万+ DOI 验证文献数据库
+- **数据分析**: 统计、时序、空间分析
+- **代码执行**: Python 代码实时运行
+- **论文写作**: 从文献到定稿全流程协作
+
+## Expertise Areas
 - Hydrology and water resources
 - Geochemistry and water quality analysis
 - Climate science and meteorology
 - Environmental monitoring and assessment
 - Spatial data analysis and GIS
-- Statistical analysis of environmental data
+- Machine learning for earth science
 
-Guidelines:
-1. Provide scientifically accurate and well-reasoned responses
-2. When analyzing data, explain your methodology clearly
-3. Reference relevant literature when appropriate
-4. Use appropriate units and scientific notation
-5. Be concise but thorough in your explanations
-6. When uncertain, acknowledge limitations and suggest further investigation
+## Guidelines
+1. 提供科学准确、有理有据的回答
+2. 分析数据时清晰解释方法论
+3. 适当引用相关文献，格式：Author et al. (Year)
+4. 使用正确的单位和科学记数法
+5. 简洁但全面地解释
+6. 不确定时承认局限性，建议进一步调查
+7. **绝不编造文献** - 只引用数据库中验证过的文献
 
-Response format:
-- Use markdown for structured responses
-- Include data summaries in clear bullet points
-- Highlight key findings and recommendations
-- Cite literature in format: Author et al. (Year)"""
+## Response Format
+- 使用 Markdown 格式结构化响应
+- 用清晰的要点列出数据摘要
+- 突出关键发现和建议
+- 代码用 ```python 代码块包裹
+- 表格用三线表 Markdown 格式"""
 
+        # Add project memory context if available
+        if project_memory:
+            memory_context = "\n\n## 项目记忆 (Project Memory)\n"
+
+            if project_memory.get("literature_list"):
+                lit_count = len(project_memory["literature_list"])
+                memory_context += f"- 已选文献: {lit_count} 篇\n"
+
+            if project_memory.get("gap_selected"):
+                memory_context += f"- 选定 Gap: {project_memory['gap_selected']}\n"
+
+            if project_memory.get("methodology"):
+                memory_context += f"- 研究方案: 已确定\n"
+
+            if project_memory.get("data_profile"):
+                memory_context += f"- 数据概况: 已分析\n"
+
+            if project_memory.get("results_data"):
+                memory_context += f"- 分析结果: 已生成\n"
+
+            sections = project_memory.get("sections", {})
+            completed_sections = [k for k, v in sections.items() if v]
+            if completed_sections:
+                memory_context += f"- 已完成章节: {', '.join(completed_sections)}\n"
+
+            base_prompt += memory_context
+
+        # Add file context if available
         if file_context:
-            base_prompt += f"\n\nUser has uploaded data:\n{file_context}"
+            base_prompt += f"\n\n## 用户数据\n{file_context}"
+
+        # Add skill prompts if specified
+        if skills:
+            from .skills import get_skill_prompt
+            skill_prompt = get_skill_prompt(skills)
+            if skill_prompt:
+                base_prompt += skill_prompt
 
         return base_prompt
 
